@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CardTrack v2 — Technical Architecture</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      line-height: 1.6;
+    }
+
+    /* ── Layout ── */
+    .hero {
+      background: linear-gradient(135deg, #1a3a5c 0%, #0f1117 60%);
+      padding: 60px 40px 40px;
+      border-bottom: 1px solid #1e293b;
+    }
+    .hero h1 { font-size: 2.4rem; font-weight: 700; color: #fff; }
+    .hero h1 span { color: #60a5fa; }
+    .hero p { margin-top: 10px; color: #94a3b8; font-size: 1.05rem; max-width: 680px; }
+    .badge {
+      display: inline-block;
+      background: #1e3a5c;
+      color: #60a5fa;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      margin: 4px 4px 0 0;
+      border: 1px solid #2563eb44;
+      letter-spacing: 0.04em;
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 40px 30px; }
+
+    h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #1e40af;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h2 .icon { font-size: 1.2rem; }
+
+    section { margin-bottom: 52px; }
+
+    p { color: #cbd5e1; margin-bottom: 10px; }
+
+    /* ── Cards ── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .card h3 { font-size: 0.85rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+    .card .value { font-size: 1.1rem; color: #e2e8f0; font-weight: 600; }
+    .card .sub { font-size: 0.85rem; color: #64748b; margin-top: 4px; }
+
+    /* ── Stack table ── */
+    .stack-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    .stack-table th { background: #1e293b; color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 10px 14px; text-align: left; }
+    .stack-table td { padding: 10px 14px; border-top: 1px solid #1e293b; color: #cbd5e1; font-size: 0.9rem; }
+    .stack-table tr:hover td { background: #1a2438; }
+    .tag {
+      display: inline-block;
+      background: #0f2a1e;
+      color: #34d399;
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid #064e3b;
+    }
+    .tag.blue { background: #0f1e3a; color: #60a5fa; border-color: #1e3a6e; }
+    .tag.yellow { background: #2a1f0a; color: #fbbf24; border-color: #78350f; }
+    .tag.red { background: #2a0f0f; color: #f87171; border-color: #7f1d1d; }
+
+    /* ── Flow diagram ── */
+    .flow {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0;
+      margin-top: 20px;
+    }
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      width: 100%;
+    }
+    .flow-step .left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 40px;
+      flex-shrink: 0;
+    }
+    .step-num {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: #1e40af;
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .step-line {
+      width: 2px;
+      flex: 1;
+      min-height: 24px;
+      background: #1e293b;
+    }
+    .flow-step .body {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 12px;
+      flex: 1;
+    }
+    .flow-step .body h4 { color: #f1f5f9; font-size: 0.95rem; margin-bottom: 4px; }
+    .flow-step .body p { color: #94a3b8; font-size: 0.85rem; margin: 0; }
+    .flow-step .body code {
+      background: #0f172a;
+      color: #7dd3fc;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.82rem;
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
+    }
+
+    /* ── Architecture box ── */
+    .arch-box {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 28px;
+      margin-top: 16px;
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
+      font-size: 0.82rem;
+      color: #94a3b8;
+      line-height: 1.8;
+      overflow-x: auto;
+    }
+    .arch-box .hl { color: #60a5fa; }
+    .arch-box .hl2 { color: #34d399; }
+    .arch-box .hl3 { color: #fbbf24; }
+    .arch-box .hl4 { color: #f87171; }
+
+    /* ── Code snippet ── */
+    pre {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 20px;
+      overflow-x: auto;
+      margin-top: 14px;
+    }
+    pre code {
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
+      font-size: 0.82rem;
+      color: #e2e8f0;
+      line-height: 1.7;
+    }
+    .kw { color: #c084fc; }
+    .fn { color: #60a5fa; }
+    .str { color: #34d399; }
+    .cm { color: #475569; font-style: italic; }
+    .num { color: #fbbf24; }
+
+    /* ── Comparison ── */
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 16px;
+    }
+    @media (max-width: 600px) { .compare { grid-template-columns: 1fr; } }
+    .compare-box {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid #334155;
+    }
+    .compare-box h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
+    .compare-box.yes h3 { color: #34d399; }
+    .compare-box.no h3 { color: #f87171; }
+    .compare-box ul { padding-left: 16px; }
+    .compare-box li { color: #94a3b8; font-size: 0.9rem; margin-bottom: 6px; }
+
+    /* ── Storage diagram ── */
+    .storage-block {
+      background: #0f172a;
+      border: 1px solid #2563eb44;
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin-top: 14px;
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
+      font-size: 0.83rem;
+      line-height: 1.9;
+    }
+
+    /* ── Security ── */
+    .warn-box {
+      background: #2a1405;
+      border: 1px solid #92400e;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-top: 12px;
+      color: #fbbf24;
+      font-size: 0.9rem;
+    }
+    .warn-box strong { color: #f59e0b; }
+
+    .info-box {
+      background: #0f1e3a;
+      border: 1px solid #1e40af;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-top: 12px;
+      color: #93c5fd;
+      font-size: 0.9rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 32px;
+      color: #475569;
+      font-size: 0.82rem;
+      border-top: 1px solid #1e293b;
+    }
+
+    /* ── Horizontal rule ── */
+    hr { border: none; border-top: 1px solid #1e293b; margin: 20px 0; }
+
+    @media (max-width: 640px) {
+      .hero { padding: 32px 20px 28px; }
+      .hero h1 { font-size: 1.7rem; }
+      .container { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <h1><span>CardTrack</span> v2 — Technical Architecture</h1>
+  <p>A complete breakdown of how this expense tracking tool works under the hood. Written for IT folks who want to know what's actually running.</p>
+  <div style="margin-top: 18px;">
+    <span class="badge">React 18</span>
+    <span class="badge">Vite 5</span>
+    <span class="badge">PWA</span>
+    <span class="badge">No Backend</span>
+    <span class="badge">LocalStorage</span>
+    <span class="badge">Service Worker</span>
+    <span class="badge">Netlify</span>
+    <span class="badge">Offline-First</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- 1. WHAT IS IT -->
+  <section>
+    <h2><span class="icon">📦</span> What Is This App?</h2>
+    <p>CardTrack v2 is a <strong style="color:#f1f5f9">credit card expense tracker</strong> — completely client-side. There is no server. No database. No login API. Everything runs in your browser and is stored locally on device.</p>
+    <p>This is important: if you clear browser storage, all data is gone. There is no cloud sync.</p>
+
+    <div class="compare" style="margin-top:18px;">
+      <div class="compare-box yes">
+        <h3>✓ What Exists</h3>
+        <ul>
+          <li>React frontend (SPA)</li>
+          <li>Browser LocalStorage (data)</li>
+          <li>Service Worker (offline)</li>
+          <li>PWA manifest (installable)</li>
+          <li>Netlify (static hosting)</li>
+        </ul>
+      </div>
+      <div class="compare-box no">
+        <h3>✗ What Does NOT Exist</h3>
+        <ul>
+          <li>No backend server</li>
+          <li>No REST / GraphQL API</li>
+          <li>No database (SQL/NoSQL)</li>
+          <li>No user accounts</li>
+          <li>No cloud storage</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. STACK -->
+  <section>
+    <h2><span class="icon">🛠</span> Tech Stack</h2>
+    <table class="stack-table">
+      <thead>
+        <tr>
+          <th>Layer</th>
+          <th>Technology</th>
+          <th>Version</th>
+          <th>Role</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>UI Framework</td>
+          <td><span class="tag blue">React</span></td>
+          <td>18.3.1</td>
+          <td>Renders all screens, handles user interaction</td>
+        </tr>
+        <tr>
+          <td>Build Tool</td>
+          <td><span class="tag blue">Vite</span></td>
+          <td>5.4.0</td>
+          <td>Bundles JS/CSS → /dist folder for deployment</td>
+        </tr>
+        <tr>
+          <td>Language</td>
+          <td><span class="tag yellow">JavaScript (JSX)</span></td>
+          <td>ES2022</td>
+          <td>All app logic in one file (App.jsx, 815 lines)</td>
+        </tr>
+        <tr>
+          <td>Persistence</td>
+          <td><span class="tag">LocalStorage</span></td>
+          <td>Browser API</td>
+          <td>Stores all cards + transactions as JSON strings</td>
+        </tr>
+        <tr>
+          <td>Offline</td>
+          <td><span class="tag">Service Worker</span></td>
+          <td>Browser API</td>
+          <td>Caches app files; app works with no internet</td>
+        </tr>
+        <tr>
+          <td>PWA</td>
+          <td><span class="tag">Web App Manifest</span></td>
+          <td>W3C Standard</td>
+          <td>Makes app installable to home screen</td>
+        </tr>
+        <tr>
+          <td>Hosting</td>
+          <td><span class="tag blue">Netlify</span></td>
+          <td>–</td>
+          <td>Serves static files from /dist over CDN</td>
+        </tr>
+        <tr>
+          <td>Fonts</td>
+          <td><span class="tag">Google Fonts</span></td>
+          <td>–</td>
+          <td>DM Sans (UI), JetBrains Mono (numbers)</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 3. ARCHITECTURE -->
+  <section>
+    <h2><span class="icon">🏗</span> Architecture Overview</h2>
+    <p>All logic lives in one place — the browser. No requests leave the device except loading the app itself and fonts.</p>
+
+    <div class="arch-box">
+<span class="hl">┌──────────────────────────────────────────────────────┐</span>
+<span class="hl">│              BROWSER  (Client Only)                   │</span>
+<span class="hl">├──────────────────────────────────────────────────────┤</span>
+│                                                       │
+│   <span class="hl2">React App (App.jsx)</span>                                 │
+│   ├─ Screen controller  (setScreen → state)           │
+│   ├─ 8 screens rendered based on screen state         │
+│   ├─ useState / useEffect / useCallback hooks         │
+│   └─ All calculations (filter/sort/sum) in-memory     │
+│                                                       │
+│   <span class="hl3">LocalStorage  (JSON blobs)</span>                          │
+│   ├─ key: <span class="hl2">cardtrack_v2</span>  → cards[] + transactions[]    │
+│   ├─ key: <span class="hl2">cardtrack_pin</span> → 4-digit PIN (plain text)    │
+│   └─ key: <span class="hl2">cardtrack_notif_seen</span> → alert thresholds     │
+│                                                       │
+│   <span class="hl4">Service Worker  (sw.js)</span>                              │
+│   ├─ Intercepts all GET requests                      │
+│   ├─ Network-first, cache fallback strategy           │
+│   └─ App works fully offline after first load         │
+│                                                       │
+<span class="hl">└──────────────────────────────────────────────────────┘</span>
+          ↕ static files only (HTML, JS, CSS, icons)
+<span class="hl">┌──────────────────────────────────────────────────────┐</span>
+<span class="hl">│              NETLIFY  (CDN / Static Host)             │</span>
+│   Serves /dist files. No compute, no DB, no API.     │
+<span class="hl">└──────────────────────────────────────────────────────┘</span>
+    </div>
+  </section>
+
+  <!-- 4. DATA FLOW -->
+  <section>
+    <h2><span class="icon">🔄</span> Full Data Flow — Adding a Transaction</h2>
+    <p>Here is exactly what happens when a user logs an expense, step by step:</p>
+
+    <div class="flow">
+
+      <div class="flow-step">
+        <div class="left"><div class="step-num">1</div><div class="step-line"></div></div>
+        <div class="body">
+          <h4>User Action</h4>
+          <p>Taps "Add Transaction." React updates <code>screen</code> state to <code>"addTxn"</code>. No page load — it's a SPA.</p>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="left"><div class="step-num">2</div><div class="step-line"></div></div>
+        <div class="body">
+          <h4>Form Input</h4>
+          <p>User fills amount, picks card, category, description, date. Each keystroke updates local component state via <code>useState</code>.</p>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="left"><div class="step-num">3</div><div class="step-line"></div></div>
+        <div class="body">
+          <h4>Validation</h4>
+          <p>On submit: check amount is a number, card is selected. If not — show inline error. No network call needed.</p>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="left"><div class="step-num">4</div><div class="step-line"></div></div>
+        <div class="body">
+          <h4>Threshold Check (Notifications)</h4>
+          <p>Before saving, app calculates new utilization %: <code>(spent + newAmount) / cardLimit × 100</code>. If crosses 75% or 90% for first time → triggers browser Notification API.</p>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="left"><div class="step-num">5</div><div class="step-line"></div></div>
+        <div class="body">
+          <h4>ID Generation</h4>
+          <p>New transaction gets a unique ID: <code>Math.random().toString(36).slice(2,10)</code> — 8-char random alphanumeric string. No UUID library needed.</p>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="left"><div class="step-num">6</div><div class="step-line"></div></div>
+        <div class="body">
+          <h4>React State Update</h4>
+          <p><code>setData(d =&gt; ({...d, transactions: [...d.transactions, newTxn]}))</code> — immutable update appends transaction to in-memory array. React schedules re-render.</p>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="left"><div class="step-num">7</div><div class="step-line"></div></div>
+        <div class="body">
+          <h4>Side Effect → Persistence</h4>
+          <p><code>useEffect([data])</code> fires on every data change. Calls <code>localStorage.setItem("cardtrack_v2", JSON.stringify(data))</code>. Data is now written to disk.</p>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="left"><div class="step-num">8</div><div class="step-line"></div></div>
+        <div class="body">
+          <h4>UI Re-renders</h4>
+          <p>React diffs the virtual DOM, updates only changed elements. Spending bar, category totals, transaction list all reflect new data. Toast "Transaction saved" appears briefly.</p>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="left"><div class="step-num">9</div><div class="step-line"></div></div>
+        <div class="body">
+          <h4>Next App Load (Browser Restart)</h4>
+          <p>On mount, <code>loadData()</code> calls <code>JSON.parse(localStorage.getItem("cardtrack_v2"))</code>. State is hydrated. App resumes exactly where it was.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 5. DATA STORAGE -->
+  <section>
+    <h2><span class="icon">🗄</span> Data Storage Schema</h2>
+    <p>All data lives in <strong style="color:#f1f5f9">one JSON blob</strong> in <code style="color:#60a5fa">localStorage</code> under key <code style="color:#34d399">cardtrack_v2</code>.</p>
+
+    <div class="storage-block">
+<span style="color:#60a5fa">localStorage["cardtrack_v2"]</span> =
+{
+  <span style="color:#fbbf24">"cards"</span>: [
+    {
+      <span style="color:#94a3b8">"id"</span>:        <span style="color:#34d399">"x3f9ab12"</span>,           <span style="color:#475569">// random 8-char ID</span>
+      <span style="color:#94a3b8">"name"</span>:      <span style="color:#34d399">"Chase Sapphire Preferred"</span>,
+      <span style="color:#94a3b8">"limit"</span>:     <span style="color:#fbbf24">15000</span>,               <span style="color:#475569">// dollars</span>
+      <span style="color:#94a3b8">"color"</span>:     <span style="color:#34d399">"#0a2a5c"</span>,
+      <span style="color:#94a3b8">"billingDay"</span>: <span style="color:#fbbf24">15</span>                 <span style="color:#475569">// day of month cycle resets</span>
+    }
+  ],
+  <span style="color:#fbbf24">"transactions"</span>: [
+    {
+      <span style="color:#94a3b8">"id"</span>:          <span style="color:#34d399">"k8m2p3n7"</span>,
+      <span style="color:#94a3b8">"cardId"</span>:      <span style="color:#34d399">"x3f9ab12"</span>,         <span style="color:#475569">// FK to cards[].id</span>
+      <span style="color:#94a3b8">"amount"</span>:      <span style="color:#fbbf24">125.50</span>,
+      <span style="color:#94a3b8">"category"</span>:    <span style="color:#34d399">"Dining"</span>,
+      <span style="color:#94a3b8">"description"</span>: <span style="color:#34d399">"Restaurant ABC"</span>,
+      <span style="color:#94a3b8">"date"</span>:        <span style="color:#34d399">"2026-04-25"</span>        <span style="color:#475569">// ISO 8601</span>
+    }
+  ]
+}
+    </div>
+
+    <p style="margin-top:14px">Relationships are manual: <code style="color:#60a5fa">transaction.cardId</code> links to <code style="color:#60a5fa">card.id</code>. No foreign keys. Joins done in JS with <code style="color:#60a5fa">.find()</code>.</p>
+    <p>Storage limit: ~5–10 MB (browser-enforced). Thousands of transactions fit easily.</p>
+
+    <div class="card-grid" style="margin-top:18px;">
+      <div class="card">
+        <h3>cardtrack_v2</h3>
+        <div class="value">Cards + Transactions</div>
+        <div class="sub">Main data blob — JSON stringified</div>
+      </div>
+      <div class="card">
+        <h3>cardtrack_pin</h3>
+        <div class="value">4-digit PIN (plain text)</div>
+        <div class="sub">No hashing — casual lock only</div>
+      </div>
+      <div class="card">
+        <h3>cardtrack_notif_seen</h3>
+        <div class="value">Alert thresholds fired</div>
+        <div class="sub">Prevents duplicate 75% / 90% alerts</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. AUTH -->
+  <section>
+    <h2><span class="icon">🔐</span> Authentication</h2>
+    <p>There is no server-side auth. The "PIN lock" is purely client-side UI protection.</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="left"><div class="step-num">1</div><div class="step-line"></div></div>
+        <div class="body">
+          <h4>First Run — Setup</h4>
+          <p>User sets 4-digit PIN → PIN is stored as plain text in <code>localStorage["cardtrack_pin"]</code>.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="left"><div class="step-num">2</div><div class="step-line"></div></div>
+        <div class="body">
+          <h4>Subsequent Opens</h4>
+          <p>App reads PIN from localStorage. Shows lock screen. User types 4 digits. <code>enteredPin === storedPin</code> → unlock. No server round-trip.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="left"><div class="step-num">3</div><div class="step-line"></div></div>
+        <div class="body">
+          <h4>PIN Reset</h4>
+          <p>Button clears mode → setup flow restarts. Old PIN overwritten. No recovery mechanism.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="warn-box" style="margin-top:16px;">
+      <strong>⚠ IT Note:</strong> PIN is <strong>plain text in browser storage</strong>. Anyone with DevTools access (<code>F12 → Application → LocalStorage</code>) can read it. This is app-level screen lock, not cryptographic security. Do not store sensitive financial credentials in this app.
+    </div>
+  </section>
+
+  <!-- 7. OFFLINE / PWA -->
+  <section>
+    <h2><span class="icon">📶</span> Offline Support (Service Worker)</h2>
+    <p>After the first page load, CardTrack works with no internet. Here's why:</p>
+
+    <pre><code><span class="cm">// sw.js — Network-first, cache-fallback strategy</span>
+
+self.addEventListener(<span class="str">"fetch"</span>, (e) => {
+  <span class="kw">if</span> (e.request.method !== <span class="str">"GET"</span>) <span class="kw">return</span>;
+
+  e.respondWith(
+    caches.<span class="fn">match</span>(e.request).<span class="fn">then</span>((cached) => {
+      <span class="cm">// Try network first</span>
+      <span class="kw">const</span> fetchPromise = <span class="fn">fetch</span>(e.request)
+        .<span class="fn">then</span>((response) => {
+          <span class="kw">if</span> (response?.status === <span class="num">200</span>) {
+            caches.<span class="fn">open</span>(CACHE_NAME).<span class="fn">then</span>(cache =>
+              cache.<span class="fn">put</span>(e.request, response.<span class="fn">clone</span>())  <span class="cm">// update cache</span>
+            );
+          }
+          <span class="kw">return</span> response;
+        })
+        .<span class="fn">catch</span>(() => cached);       <span class="cm">// offline? use cache</span>
+
+      <span class="kw">return</span> cached || fetchPromise;  <span class="cm">// instant if cached</span>
+    })
+  );
+});</code></pre>
+
+    <div class="info-box">
+      <strong>How it works:</strong> Browser registers sw.js as a background thread. It intercepts every GET request. If cached version exists → serve it instantly. In parallel, fetch fresh copy from network and update cache. If offline → cached version serves the app. Data (localStorage) never goes to network, so offline writes work too.
+    </div>
+  </section>
+
+  <!-- 8. BUILD PIPELINE -->
+  <section>
+    <h2><span class="icon">⚙️</span> Build & Deployment Pipeline</h2>
+    <p>How code goes from developer's machine to the browser:</p>
+
+    <div class="arch-box">
+<span class="hl2">Developer Machine</span>
+│
+├─ <span class="hl3">npm run dev</span>
+│   └─ Vite dev server on localhost:5173
+│       ├─ Hot Module Replacement (HMR) — changes reflect instantly
+│       └─ No build step needed for development
+│
+├─ <span class="hl3">npm run build</span>
+│   └─ Vite bundles everything:
+│       ├─ JSX → minified JS (single bundle)
+│       ├─ CSS → minified stylesheet
+│       ├─ Assets → hashed filenames (cache-busting)
+│       └─ Output: /dist folder
+│
+└─ <span class="hl3">Deploy /dist to Netlify</span>
+    ├─ CDN distributes files globally
+    ├─ HTTPS automatically
+    ├─ No server processes running
+    └─ Browser downloads HTML/JS/CSS → app runs locally
+    </div>
+
+    <div class="card-grid" style="margin-top:16px;">
+      <div class="card">
+        <h3>Input (Source)</h3>
+        <div class="value">src/App.jsx</div>
+        <div class="sub">815-line React component — entire app</div>
+      </div>
+      <div class="card">
+        <h3>Output (Production)</h3>
+        <div class="value">/dist/*.js + *.css</div>
+        <div class="sub">Minified bundle, ~150-200KB</div>
+      </div>
+      <div class="card">
+        <h3>Hosting</h3>
+        <div class="value">Netlify CDN</div>
+        <div class="sub">Static files, no compute needed</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. SCREENS -->
+  <section>
+    <h2><span class="icon">📱</span> App Screens (No Router)</h2>
+    <p>There is no URL routing. Navigation is one <code style="color:#60a5fa">screen</code> state variable switching between 8 views.</p>
+
+    <table class="stack-table">
+      <thead>
+        <tr><th>screen value</th><th>What renders</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code style="color:#34d399">home</code></td><td>Home()</td><td>Dashboard: spending overview, card list, alerts</td></tr>
+        <tr><td><code style="color:#34d399">cardsScreen</code></td><td>CardsScreen()</td><td>Full card gallery with visual card art</td></tr>
+        <tr><td><code style="color:#34d399">addCard</code></td><td>CardForm()</td><td>Add new credit card</td></tr>
+        <tr><td><code style="color:#34d399">editCard</code></td><td>CardForm(editId)</td><td>Edit existing card</td></tr>
+        <tr><td><code style="color:#34d399">addTxn</code></td><td>AddTxn()</td><td>Log a transaction</td></tr>
+        <tr><td><code style="color:#34d399">cardDetail</code></td><td>CardDetail()</td><td>Single card: transactions + category breakdown</td></tr>
+        <tr><td><code style="color:#34d399">stats</code></td><td>Stats()</td><td>Aggregated stats across all cards</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 10. SECURITY -->
+  <section>
+    <h2><span class="icon">🛡</span> Security Posture</h2>
+    <p>Summary for IT/InfoSec:</p>
+
+    <table class="stack-table">
+      <thead>
+        <tr><th>Area</th><th>Status</th><th>Detail</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>PIN storage</td><td><span class="tag red">Plain text</span></td><td>Stored in localStorage, readable via DevTools</td></tr>
+        <tr><td>Data encryption</td><td><span class="tag red">None</span></td><td>JSON stored unencrypted in browser storage</td></tr>
+        <tr><td>Network exposure</td><td><span class="tag">Minimal</span></td><td>No data leaves device; only app files fetched</td></tr>
+        <tr><td>Auth</td><td><span class="tag yellow">Client only</span></td><td>UI-level lock, not cryptographic</td></tr>
+        <tr><td>Backend attack surface</td><td><span class="tag">None</span></td><td>No backend exists — nothing to attack remotely</td></tr>
+        <tr><td>HTTPS</td><td><span class="tag">Yes</span></td><td>Netlify enforces HTTPS automatically</td></tr>
+        <tr><td>Data backup</td><td><span class="tag yellow">CSV export only</span></td><td>Manual export; clear storage = data gone</td></tr>
+        <tr><td>Multi-device sync</td><td><span class="tag red">Not supported</span></td><td>Data is per-browser, per-device</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 11. QUICK SUMMARY -->
+  <section>
+    <h2><span class="icon">⚡</span> TL;DR for IT</h2>
+    <div class="info-box" style="font-size:0.95rem; line-height:1.9;">
+      <strong>One sentence:</strong> CardTrack is a React single-page app that runs entirely in the browser, stores everything in localStorage as JSON, has no server, no database, and no network traffic beyond loading the app itself.<br><br>
+      <strong>Stack:</strong> React 18 + Vite 5, hosted on Netlify as static files.<br>
+      <strong>Data:</strong> ~3 localStorage keys, JSON blobs, max ~5MB.<br>
+      <strong>Auth:</strong> 4-digit PIN, plain text, client-side only.<br>
+      <strong>Offline:</strong> Service Worker caches all app files after first load.<br>
+      <strong>Install:</strong> PWA — can be added to home screen, works like a native app.<br>
+      <strong>Risk surface:</strong> Local only. No external data exfil. Physical device access = full data access.
+    </div>
+  </section>
+
+</div>
+
+<footer>CardTrack v2 · Technical Architecture Reference · Generated 2026-04-25</footer>
+
+</body>
+</html>
