@@ -1,7 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
 const CATEGORIES = ["Groceries","Dining","Gas","Shopping","Bills","Travel","Health","Entertainment","Other"];
-const CARD_COLORS = ["#1a3a5c","#b8860b","#4a3080","#8b3a2a","#1a5c4a","#6b2040","#2a5010","#3a3a38","#704010"];
+const CARD_COLORS = [
+  "#1a1a1a","#3a3a38","#707070","#a0a0a0", // black, charcoal, gray, silver
+  "#b80000","#8b3a2a","#6b2040","#b04070", // red, brick, burgundy, pink
+  "#1a3a5c","#1a3aaa","#0a6aaa","#0a7878", // navy, cobalt, sky blue, teal
+  "#4a3080","#2a1a80","#6a208a","#b87060", // purple, indigo, violet, rose gold
+  "#b8860b","#704010","#c86010","#2a5010", // gold, brown, orange, forest green
+  "#1a5c4a","#1a7858","#3a5068","#4a5468", // dark teal, mint, steel, slate
+];
 
 /* ── Card presets: auto-detected from name ── */
 const CARD_PRESETS = [
@@ -51,7 +58,9 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const fmt = (n) => Number(n||0).toLocaleString("en-US",{style:"currency",currency:"USD",minimumFractionDigits:0,maximumFractionDigits:0});
 const fmtFull = (n) => Number(n||0).toLocaleString("en-US",{style:"currency",currency:"USD",minimumFractionDigits:2});
 const pct = (used, limit) => limit ? Math.round((used / limit) * 100) : 0;
-const barColor = (p) => p>=90?"#dc3545":p>=75?"#e8a020":p>=50?"#c08818":"#18845a";
+const barColor = (p) => p>=90?"#dc3545":p>=75?"#e8a020":p>=28?"#e8a020":p>=10?"#f59e0b":"#18845a";
+const recPct = (spent, limit) => limit ? Math.min(Math.round(spent/(limit*0.28)*100), 100) : 0;
+const recBarColor = (spent, limit) => { const p=limit?Math.round(spent/limit*100):0; return p>=28?"#e8a020":p>=10?"#f59e0b":"#18845a"; };
 const alertStyle = (p) => {
   if (p>=90) return {bg:"#fde8e8",border:"#f5a0a0",text:"#7a1a1a",icon:"#a82020"};
   if (p>=75) return {bg:"#fdf4e0",border:"#f0c860",text:"#5a3800",icon:"#8a5500"};
@@ -157,14 +166,121 @@ const CreditCardVisual = ({ card, style={} }) => {
   );
 };
 
+/* ── Mandala Background ── */
+const D2R=Math.PI/180;
+const mpx=(c,r,a)=>c+r*Math.cos(a*D2R);
+const mpy=(c,r,a)=>c+r*Math.sin(a*D2R);
+const flamePetal=(c,r1,r2,a,hs)=>{const lx=mpx(c,r1,a-hs),ly=mpy(c,r1,a-hs),rx=mpx(c,r1,a+hs),ry=mpy(c,r1,a+hs),tx=mpx(c,r2,a),ty=mpy(c,r2,a),cm=r1*.15+r2*.85,c1x=mpx(c,cm,a-hs*.12),c1y=mpy(c,cm,a-hs*.12),c2x=mpx(c,cm,a+hs*.12),c2y=mpy(c,cm,a+hs*.12);return`M${lx},${ly} Q${c1x},${c1y} ${tx},${ty} Q${c2x},${c2y} ${rx},${ry} Z`;};
+const lotusPetal=(c,r1,r2,a,hs)=>{const lx=mpx(c,r1,a-hs),ly=mpy(c,r1,a-hs),rx=mpx(c,r1,a+hs),ry=mpy(c,r1,a+hs),tx=mpx(c,r2,a),ty=mpy(c,r2,a),rm=r1*.25+r2*.75,rt=r2*1.04,c1x=mpx(c,rm,a-hs*.75),c1y=mpy(c,rm,a-hs*.75),c2x=mpx(c,rt,a-hs*.18),c2y=mpy(c,rt,a-hs*.18),c3x=mpx(c,rt,a+hs*.18),c3y=mpy(c,rt,a+hs*.18),c4x=mpx(c,rm,a+hs*.75),c4y=mpy(c,rm,a+hs*.75);return`M${lx},${ly} C${c1x},${c1y} ${c2x},${c2y} ${tx},${ty} C${c3x},${c3y} ${c4x},${c4y} ${rx},${ry} Z`;};
+const teardrop=(c,r1,r2,a,hs)=>{const lx=mpx(c,r1,a-hs),ly=mpy(c,r1,a-hs),rx=mpx(c,r1,a+hs),ry=mpy(c,r1,a+hs),tx=mpx(c,r2,a),ty=mpy(c,r2,a),rm=r1*.4+r2*.6,c1x=mpx(c,rm,a-hs*.5),c1y=mpy(c,rm,a-hs*.5),c2x=mpx(c,rm,a+hs*.5),c2y=mpy(c,rm,a+hs*.5);return`M${lx},${ly} C${c1x},${c1y} ${tx},${ty} ${tx},${ty} C${tx},${ty} ${c2x},${c2y} ${rx},${ry} Z`;};
+function MandalaSVG({size=300,color='#1c3250',baseOpacity=0.09}){
+  const c=size/2,s=size/300,r=v=>v*s,sw=0.45;
+  const FR=(n,r1,r2,hs,off=0,fo=0.2)=>Array.from({length:n},(_,i)=>{const a=(360/n)*i+off;return<path key={i} d={flamePetal(c,r(r1),r(r2),a,hs)} fill={color} fillOpacity={fo} stroke={color} strokeWidth={sw}/>;});
+  const LR=(n,r1,r2,hs,off=0,fo=0.18)=>Array.from({length:n},(_,i)=>{const a=(360/n)*i+off;return<path key={i} d={lotusPetal(c,r(r1),r(r2),a,hs)} fill={color} fillOpacity={fo} stroke={color} strokeWidth={sw}/>;});
+  const TR=(n,r1,r2,hs,off=0,fo=0.22)=>Array.from({length:n},(_,i)=>{const a=(360/n)*i+off;return<path key={i} d={teardrop(c,r(r1),r(r2),a,hs)} fill={color} fillOpacity={fo} stroke={color} strokeWidth={sw}/>;});
+  const DR=(n,rad,dr,off=0)=>Array.from({length:n},(_,i)=>{const a=(360/n)*i+off;return<circle key={i} cx={mpx(c,r(rad),a)} cy={mpy(c,r(rad),a)} r={r(dr)} fill={color}/>;});
+  const SC=(n,rad,pr)=>Array.from({length:n},(_,i)=>{const a=(360/n)*i;return<circle key={i} cx={mpx(c,r(rad),a)} cy={mpy(c,r(rad),a)} r={r(pr)} fill="none" stroke={color} strokeWidth={sw*.7}/>;});
+  const SP=(n,r1,r2,off=0)=>Array.from({length:n},(_,i)=>{const a=(360/n)*i+off;return<line key={i} x1={mpx(c,r(r1),a)} y1={mpy(c,r(r1),a)} x2={mpx(c,r(r2),a)} y2={mpy(c,r(r2),a)} stroke={color} strokeWidth={sw*.5}/>;});
+  return(
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} fill="none" opacity={baseOpacity}>
+      <circle cx={c} cy={c} r={r(3.5)} fill={color}/>
+      <circle cx={c} cy={c} r={r(5.5)} fill="none" stroke={color} strokeWidth={sw}/>
+      {FR(8,5.5,15,9,0,.3)}{FR(8,5.5,11,6,22.5,.15)}
+      <circle cx={c} cy={c} r={r(16)} fill="none" stroke={color} strokeWidth={sw}/>
+      {DR(16,17.5,.9)}<circle cx={c} cy={c} r={r(19)} fill="none" stroke={color} strokeWidth={sw*.7}/>
+      {TR(16,19,30,8,0,.2)}{TR(16,19,24,4,11.25,.1)}
+      <circle cx={c} cy={c} r={r(31)} fill="none" stroke={color} strokeWidth={sw}/>
+      {SC(32,33,2.5)}<circle cx={c} cy={c} r={r(36)} fill="none" stroke={color} strokeWidth={sw*.7}/>
+      {SP(32,36,40,5.625)}{DR(32,40.5,.9,5.625)}
+      {LR(16,40,56,11,0,.22)}{LR(16,40,50,6,11.25,.1)}
+      <circle cx={c} cy={c} r={r(57)} fill="none" stroke={color} strokeWidth={sw}/>
+      {SC(48,59.5,2.8)}<circle cx={c} cy={c} r={r(63)} fill="none" stroke={color} strokeWidth={sw*.7}/>
+      {DR(48,64,.8,3.75)}{SP(24,57,63,7.5)}
+      {FR(24,64,78,7,0,.18)}{TR(24,64,72,4,7.5,.1)}
+      <circle cx={c} cy={c} r={r(79)} fill="none" stroke={color} strokeWidth={sw}/>
+      <circle cx={c} cy={c} r={r(81)} fill="none" stroke={color} strokeWidth={sw*.6}/>
+      {DR(48,82.5,.8)}{SC(48,84.5,2.2)}<circle cx={c} cy={c} r={r(87)} fill="none" stroke={color} strokeWidth={sw}/>
+      {LR(16,87,108,10,0,.2)}{LR(16,87,100,5.5,11.25,.1)}{TR(32,87,94,3,5.625,.08)}
+      <circle cx={c} cy={c} r={r(109)} fill="none" stroke={color} strokeWidth={sw}/>
+      {SC(64,111.5,2.5)}<circle cx={c} cy={c} r={r(114.5)} fill="none" stroke={color} strokeWidth={sw*.8}/>
+      {DR(64,116,.75,2.8125)}<circle cx={c} cy={c} r={r(117.5)} fill="none" stroke={color} strokeWidth={sw*.5}/>
+      {FR(16,117.5,140,9,0,.18)}{LR(16,117.5,132,5,11.25,.1)}
+      <circle cx={c} cy={c} r={r(142)} fill="none" stroke={color} strokeWidth={sw}/>
+      {SC(80,144,2)}<circle cx={c} cy={c} r={r(147)} fill="none" stroke={color} strokeWidth={sw*.8}/>
+      <circle cx={c} cy={c} r={r(149)} fill="none" stroke={color} strokeWidth={sw*.4}/>
+    </svg>
+  );
+}
+function MandalaBackground({color='#1c3250',centerSize=520,cornerSize=280,accentSize=170}){
+  const off=-Math.round(cornerSize*.32);
+  return(
+    <div style={{position:'absolute',inset:0,overflow:'hidden',pointerEvents:'none',zIndex:0}}>
+      <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)'}}><MandalaSVG size={centerSize} color={color} baseOpacity={0.14}/></div>
+      <div style={{position:'absolute',top:off,left:off}}><MandalaSVG size={cornerSize} color={color} baseOpacity={0.09}/></div>
+      <div style={{position:'absolute',top:off,right:off}}><MandalaSVG size={cornerSize} color={color} baseOpacity={0.09}/></div>
+      <div style={{position:'absolute',bottom:off,left:off}}><MandalaSVG size={cornerSize} color={color} baseOpacity={0.09}/></div>
+      <div style={{position:'absolute',bottom:off,right:off}}><MandalaSVG size={cornerSize} color={color} baseOpacity={0.09}/></div>
+      <div style={{position:'absolute',top:'28%',right:-Math.round(accentSize*.32)}}><MandalaSVG size={accentSize} color={color} baseOpacity={0.07}/></div>
+      <div style={{position:'absolute',bottom:'28%',left:-Math.round(accentSize*.32)}}><MandalaSVG size={accentSize} color={color} baseOpacity={0.07}/></div>
+    </div>
+  );
+}
+
+/* ── Swipe Row ── */
+function SwipeRow({ children, onDelete, onEdit, bg="#fff", style={} }) {
+  const [sw, setSw] = useState({ v:0, anim:true });
+  const startX = useRef(0), startY = useRef(0), startV = useRef(0);
+  const swiped = useRef(false), dir = useRef(null); // dir: null | 'h' | 'v'
+  const ACTION_W = onEdit ? 136 : 76;
+
+  const ts = (e) => {
+    startX.current=e.touches[0].clientX;
+    startY.current=e.touches[0].clientY;
+    startV.current=sw.v;
+    swiped.current=false;
+    dir.current=null;
+    setSw(s=>({...s,anim:false}));
+  };
+  const tm = (e) => {
+    const dx=e.touches[0].clientX-startX.current;
+    const dy=e.touches[0].clientY-startY.current;
+    // lock direction on first significant movement
+    if(!dir.current&&(Math.abs(dx)>4||Math.abs(dy)>4))
+      dir.current=Math.abs(dx)>Math.abs(dy)?'h':'v';
+    if(dir.current==='v')return; // vertical scroll — do nothing
+    e.preventDefault(); // horizontal swipe — block scroll
+    if(Math.abs(dx)>8)swiped.current=true;
+    setSw({v:Math.max(-ACTION_W,Math.min(0,startV.current+dx)),anim:false});
+  };
+  const te = () => { if(dir.current==='v'){setSw(s=>({...s,anim:true}));return;} setSw({v:sw.v<-55?-ACTION_W:0,anim:true}); };
+  const close = () => setSw({v:0,anim:true});
+
+  return (
+    <div style={{position:"relative",overflow:"hidden",...style}}>
+      <div style={{position:"absolute",right:0,top:0,bottom:0,display:"flex"}}>
+        {onEdit&&<button onClick={()=>{close();onEdit();}} style={{width:60,background:"#1a3a5c",color:"#fff",border:"none",cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif"}}>Edit</button>}
+        <button onClick={()=>{close();if(window.confirm("Delete this? This cannot be undone."))onDelete();}} style={{width:76,background:"#dc3545",color:"#fff",border:"none",cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif"}}>Delete</button>
+      </div>
+      <div
+        style={{transform:`translateX(${sw.v}px)`,transition:sw.anim?"transform 0.25s ease":"none",background:bg,position:"relative",zIndex:1}}
+        onClickCapture={e=>{if(swiped.current){e.stopPropagation();swiped.current=false;}}}
+        onTouchStart={ts} onTouchMove={tm} onTouchEnd={te}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 /* ── Theme ── */
 const T = {
-  bg:"#f6f5f0", card:"#fff", border:"rgba(0,0,0,0.08)",
-  text:"#1a1a1a", muted:"#6b6860", hint:"#9a9890",
-  surface:"#f0efe8", accent:"#1a3a5c",
+  bg:"#e9e4db", card:"#f5f1eb", border:"rgba(28,50,80,0.10)",
+  text:"#1a2030", muted:"#7a7870", hint:"#9a9080",
+  surface:"#dfd9cf", accent:"#1c3250",
   font:"'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+  serif:"'DM Serif Display',Georgia,serif",
   mono:"'JetBrains Mono','SF Mono','Fira Code',monospace",
-  r:14, rs:10,
+  r:16, rs:12,
 };
 
 const S = {
@@ -194,6 +310,7 @@ const checkNotif = (card, newSpent, prevSpent) => {
   const p=pct(newSpent,card.limit), pp=pct(prevSpent,card.limit), seen=getNotifSeen();
   if (p>=90&&pp<90&&!seen[`${card.id}_90`]) { sendNotif("Credit Alert",`${card.name} at ${p}%! ${fmt(card.limit-newSpent)} left.`); markSeen(`${card.id}_90`); }
   else if (p>=75&&pp<75&&!seen[`${card.id}_75`]) { sendNotif("CardTrack",`${card.name} reached 75% — ${fmt(card.limit-newSpent)} left.`); markSeen(`${card.id}_75`); }
+  else if (p>=28&&pp<28&&!seen[`${card.id}_28`]) { sendNotif("Put it away! 🛑",`${card.name} hit 28%. Stop here to protect your credit score.`); markSeen(`${card.id}_28`); }
 };
 
 /* ══════════════ PIN LOCK ══════════════ */
@@ -241,15 +358,31 @@ export default function CardTrack() {
   const [selCard,setSelCard]=useState(null);
   const [toast,setToast]=useState(null);
   const [notif,setNotif]=useState(typeof Notification!=="undefined"&&Notification.permission==="granted");
+  const [over30,setOver30]=useState(null); // {cardId, p, limit, spent}
   const toastRef=useRef(null);
 
   useEffect(()=>{saveData(data);},[data]);
   useEffect(()=>{if("serviceWorker"in navigator)navigator.serviceWorker.register("/sw.js").catch(()=>{});},[]);
+  useEffect(()=>{
+    data.cards.forEach(card=>{
+      if(!card.paymentDueDay)return;
+      const today=new Date(),due=new Date(today.getFullYear(),today.getMonth(),card.paymentDueDay);
+      if(due<today)due.setMonth(due.getMonth()+1);
+      const days=Math.ceil((due-today)/86400000);
+      if(days<=10){
+        const key=`cardtrack_duenotif_${card.id}_${due.getMonth()}`;
+        if(!localStorage.getItem(key)){
+          sendNotif(`Pay ${card.name} in ${days} day${days!==1?"s":""}!`,`Pay your balance now to boost your credit score. On-time payments = 35% of your score.`);
+          localStorage.setItem(key,"1");
+        }
+      }
+    });
+  },[data.cards]);
 
   const showToast=(m)=>{setToast(m);if(toastRef.current)clearTimeout(toastRef.current);toastRef.current=setTimeout(()=>setToast(null),2200);};
   const toggleNotif=async()=>{if(notif){setNotif(false);showToast("Notifications off");return;}const ok=await askNotif();setNotif(ok);showToast(ok?"Notifications enabled!":"Permission denied in settings");};
 
-  const addCard=(c)=>{setData(d=>({...d,cards:[...d.cards,{...c,id:uid()}]}));showToast("Card added");};
+  const addCard=(c)=>{const id=uid();setData(d=>({...d,cards:[...d.cards,{...c,id}]}));showToast("Card added");return id;};
   const updateCard=(id,u)=>{setData(d=>({...d,cards:d.cards.map(c=>c.id===id?{...c,...u}:c)}));showToast("Card updated");};
   const deleteCard=(id)=>{setData(d=>({cards:d.cards.filter(c=>c.id!==id),transactions:d.transactions.filter(t=>t.cardId!==id)}));showToast("Card deleted");setScreen("home");};
 
@@ -257,6 +390,11 @@ export default function CardTrack() {
     const prev=data.transactions.filter(t=>t.cardId===txn.cardId).reduce((s,t)=>s+Number(t.amount),0);
     const card=data.cards.find(c=>c.id===txn.cardId);
     if(card)checkNotif(card,prev+Number(txn.amount),prev);
+    const newSpent=prev+Number(txn.amount);
+    if(card&&!card.useFullLimit&&pct(newSpent,card.limit)>=30){
+      const seenKey=`cardtrack_over30_${card.id}`;
+      if(!localStorage.getItem(seenKey))setOver30({cardId:card.id,p:Math.round(pct(newSpent,card.limit)),limit:card.limit,spent:newSpent});
+    }
     setData(d=>({...d,transactions:[...d.transactions,{...txn,id:uid()}]}));
     showToast("Transaction saved");
   };
@@ -278,6 +416,35 @@ export default function CardTrack() {
 
   if (locked) return <PinLock onUnlock={()=>setLocked(false)}/>;
 
+  /* ── OVER-30% MODAL ── */
+  const Over30Modal=()=>{
+    if(!over30)return null;
+    const card=data.cards.find(c=>c.id===over30.cardId);
+    const dismiss=(useRest)=>{
+      localStorage.setItem(`cardtrack_over30_${over30.cardId}`,"1");
+      if(useRest)updateCard(over30.cardId,{useFullLimit:true});
+      setOver30(null);
+    };
+    return(
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:999,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+        <div style={{background:T.card,borderRadius:"22px 22px 0 0",padding:"28px 22px 44px",width:"100%",maxWidth:460,boxShadow:"0 -8px 40px rgba(0,0,0,.18)"}}>
+          <div style={{width:36,height:4,background:T.border,borderRadius:2,margin:"0 auto 24px"}}/>
+          <div style={{fontSize:22,fontWeight:700,marginBottom:10}}>⚠️ You've used {over30.p}%</div>
+          <div style={{fontSize:14,color:T.muted,lineHeight:1.6,marginBottom:24}}>
+            You've already used <strong>{over30.p}%</strong> of <strong>{card?.name}</strong> — above the ideal 28% for a healthy credit score.<br/><br/>
+            Do you want to keep tracking against the <strong>remaining {100-over30.p}%</strong>, or stay under the 28% recommendation?
+          </div>
+          <button onClick={()=>dismiss(true)} style={{...S.btn,background:T.accent,color:"#fff",borderRadius:T.rs,marginBottom:10}}>
+            Yes — track remaining {fmt(over30.limit-over30.spent)} limit
+          </button>
+          <button onClick={()=>dismiss(false)} style={{...S.btn,background:T.surface,color:T.text,borderRadius:T.rs,border:`1px solid ${T.border}`}}>
+            No — keep 28% guardrail
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   /* ── HOME ── */
   const Home=()=>{
     const r=36,circ=2*Math.PI*r,off=circ-(circ*Math.min(spentPct,100))/100;
@@ -287,7 +454,7 @@ export default function CardTrack() {
         <div className="page-top">
           <div>
             <div style={{fontSize:13,color:T.muted,fontWeight:500,marginBottom:2}}>Your spending</div>
-            <div style={{fontSize:26,fontWeight:700,letterSpacing:"-.5px"}}>CardTrack</div>
+            <div style={{fontSize:26,fontWeight:700,letterSpacing:"-.5px",fontFamily:T.serif}}>CardTrack</div>
           </div>
           {data.transactions.length>0&&<button onClick={exportCSV} style={{background:"none",border:"none",cursor:"pointer",color:T.muted,padding:8,borderRadius:10}}><IconExport/></button>}
         </div>
@@ -316,16 +483,16 @@ export default function CardTrack() {
                   </div>
                 )}
               </div>
-              {data.cards.slice(0,3).map(c=>{const s=cardSpent(c.id),p2=pct(s,c.limit);return(
+              {[...data.cards].sort((a,b)=>pct(cardSpent(b.id),b.limit)-pct(cardSpent(a.id),a.limit)).slice(0,3).map(c=>{const s=cardSpent(c.id),rp=recPct(s,c.limit),over=s>c.limit*.28;return(
                 <div key={c.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,position:"relative"}}>
                   <div style={{width:7,height:7,borderRadius:2,background:c.color,flexShrink:0}}/>
                   <div style={{flex:1}}>
                     <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
                       <span style={{fontSize:11,color:"rgba(255,255,255,.65)",fontWeight:500}}>{c.name.length>20?c.name.slice(0,20)+"…":c.name}</span>
-                      <span style={{fontSize:11,color:"rgba(255,255,255,.4)",fontFamily:T.mono}}>{fmt(s)}</span>
+                      <span style={{fontSize:11,color:over?"#fca5a5":"rgba(255,255,255,.4)",fontFamily:T.mono}}>{fmt(s)}{over?" ↑":""}</span>
                     </div>
                     <div style={{height:3,background:"rgba(255,255,255,.1)",borderRadius:2,overflow:"hidden"}}>
-                      <div style={{width:`${Math.min(p2,100)}%`,height:"100%",background:barColor(p2),borderRadius:2}}/>
+                      <div style={{width:`${rp}%`,height:"100%",background:over?"#dc3545":"#c9a96e",borderRadius:2}}/>
                     </div>
                   </div>
                 </div>
@@ -347,6 +514,37 @@ export default function CardTrack() {
             </div>
           ):null})}
 
+          {/* Billing due banners */}
+          {data.cards.filter(card=>{
+            if(!card.paymentDueDay)return false;
+            const today=new Date(),due=new Date(today.getFullYear(),today.getMonth(),card.paymentDueDay);
+            if(due<today)due.setMonth(due.getMonth()+1);
+            return Math.ceil((due-today)/86400000)<=10;
+          }).map(card=>{
+            const today=new Date(),due=new Date(today.getFullYear(),today.getMonth(),card.paymentDueDay);
+            if(due<today)due.setMonth(due.getMonth()+1);
+            const days=Math.ceil((due-today)/86400000);
+            const spent=cardSpent(card.id);
+            return(
+              <div key={card.id+"_due"} style={{background:"#eef4ff",border:"1px solid #a0c0f0",borderRadius:T.rs,padding:"14px 16px",marginBottom:10}}>
+                <div style={{fontSize:14,fontWeight:700,color:"#1a3a8c",marginBottom:4}}>
+                  💳 {card.name} — payment due in {days} day{days!==1?"s":""}
+                </div>
+                <div style={{fontSize:13,color:"#2a4a9c",lineHeight:1.5}}>
+                  Pay your balance of <strong>{fmt(spent)}</strong> before the due date to boost your credit score. On-time payments are 35% of your score!
+                </div>
+              </div>
+            );
+          })}
+
+          {/* 28% persuasion banner */}
+          {has&&spentPct>=28&&spentPct<75&&(
+            <div style={{background:"#fffbea",border:"1px solid #f0cc50",borderRadius:T.rs,padding:"14px 16px",marginBottom:10}}>
+              <div style={{fontSize:14,fontWeight:700,color:"#7a4a00",marginBottom:4}}>🛑 Put the card away — you've hit {spentPct}%</div>
+              <div style={{fontSize:13,color:"#8a5800",lineHeight:1.55}}>You've reached the ideal 28% credit utilization limit. Every dollar above this quietly hurts your credit score. Your future self will thank you for stopping here.</div>
+            </div>
+          )}
+
           {/* Empty state */}
           {!has&&(
             <div style={{...S.card,textAlign:"center",padding:"64px 24px",marginTop:16}}>
@@ -365,29 +563,31 @@ export default function CardTrack() {
           {data.cards.map(card=>{
             const spent=cardSpent(card.id),p=pct(spent,card.limit),isAlert=p>=90,cp=getCardPreset(card.name);
             return(
-              <div key={card.id} onClick={()=>{setSelCard(card.id);setScreen("cardDetail");}} style={{...S.card,cursor:"pointer",border:isAlert?`1px solid #f0a0a0`:S.card.border,position:"relative",overflow:"hidden"}}>
-                <div style={{position:"absolute",left:0,top:0,bottom:0,width:4,background:cp?.bg1||card.color,borderRadius:"4px 0 0 4px"}}/>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,paddingLeft:10}}>
-                  <div style={{display:"flex",alignItems:"center",gap:12}}>
-                    <div style={{width:46,height:30,borderRadius:7,background:`linear-gradient(135deg,${cp?.bg1||card.color} 0%,${cp?.bg2||card.color+"99"} 100%)`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                      {cp?.network==="mastercard"&&<svg width="24" height="15" viewBox="0 0 40 26"><circle cx="15" cy="13" r="13" fill="#eb001b" opacity=".9"/><circle cx="25" cy="13" r="13" fill="#f79e1b" opacity=".9"/></svg>}
-                      {cp?.network==="visa"&&<span style={{fontFamily:"serif",fontSize:10,fontWeight:900,fontStyle:"italic",color:cp?.text||"#fff",opacity:.9}}>VISA</span>}
-                      {cp?.network==="amex"&&<span style={{fontFamily:"sans-serif",fontSize:7,fontWeight:800,color:cp?.text||"#fff",letterSpacing:"1px",opacity:.9}}>AMEX</span>}
+              <SwipeRow key={card.id} onDelete={()=>deleteCard(card.id)} onEdit={()=>{setSelCard(card.id);setScreen("editCard");}} bg={T.card} style={{borderRadius:T.r,marginBottom:10}}>
+                <div onClick={()=>{setSelCard(card.id);setScreen("cardDetail");}} style={{...S.card,marginBottom:0,cursor:"pointer",border:isAlert?`1px solid #f0a0a0`:S.card.border,position:"relative",overflow:"hidden"}}>
+                  <div style={{position:"absolute",left:0,top:0,bottom:0,width:4,background:cp?.bg1||card.color,borderRadius:"4px 0 0 4px"}}/>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,paddingLeft:10}}>
+                    <div style={{display:"flex",alignItems:"center",gap:12}}>
+                      <div style={{width:46,height:30,borderRadius:7,background:`linear-gradient(135deg,${cp?.bg1||card.color} 0%,${cp?.bg2||card.color+"99"} 100%)`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                        {cp?.network==="mastercard"&&<svg width="24" height="15" viewBox="0 0 40 26"><circle cx="15" cy="13" r="13" fill="#eb001b" opacity=".9"/><circle cx="25" cy="13" r="13" fill="#f79e1b" opacity=".9"/></svg>}
+                        {cp?.network==="visa"&&<span style={{fontFamily:"serif",fontSize:10,fontWeight:900,fontStyle:"italic",color:cp?.text||"#fff",opacity:.9}}>VISA</span>}
+                        {cp?.network==="amex"&&<span style={{fontFamily:"sans-serif",fontSize:7,fontWeight:800,color:cp?.text||"#fff",letterSpacing:"1px",opacity:.9}}>AMEX</span>}
+                      </div>
+                      <div>
+                        <div style={{fontSize:15,fontWeight:600}}>{card.name}</div>
+                        <div style={{fontSize:12,color:T.muted,marginTop:1}}>{fmt(card.limit)} limit</div>
+                      </div>
                     </div>
-                    <div>
-                      <div style={{fontSize:15,fontWeight:600}}>{card.name}</div>
-                      <div style={{fontSize:12,color:T.muted,marginTop:1}}>{fmt(card.limit)} limit</div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontSize:17,fontWeight:700,fontFamily:T.mono,color:isAlert?"#a82020":T.text}}>{fmt(spent)}</div>
+                      <div style={{fontSize:12,color:isAlert?"#a82020":T.muted,fontWeight:isAlert?600:400,marginTop:1}}>{p}%</div>
                     </div>
                   </div>
-                  <div style={{textAlign:"right"}}>
-                    <div style={{fontSize:17,fontWeight:700,fontFamily:T.mono,color:isAlert?"#a82020":T.text}}>{fmt(spent)}</div>
-                    <div style={{fontSize:12,color:isAlert?"#a82020":T.muted,fontWeight:isAlert?600:400,marginTop:1}}>{p}%</div>
+                  <div style={{height:5,background:T.surface,borderRadius:3,marginLeft:10,overflow:"hidden"}}>
+                    <div style={{width:`${recPct(spent,card.limit)}%`,height:"100%",background:recBarColor(spent,card.limit),borderRadius:3,transition:"width .4s ease"}}/>
                   </div>
                 </div>
-                <div style={{height:5,background:T.surface,borderRadius:3,overflow:"hidden",marginLeft:10}}>
-                  <div style={{width:`${Math.min(p,100)}%`,height:"100%",background:barColor(p),borderRadius:3,transition:"width .4s ease"}}/>
-                </div>
-              </div>
+              </SwipeRow>
             );
           })}
 
@@ -409,12 +609,78 @@ export default function CardTrack() {
     const [expanded,setExpanded]=useState(false);
     const cardRef=useRef(null);
     const [cardH,setCardH]=useState(218);
+    const [order,setOrder]=useState(()=>data.cards.map(c=>c.id));
+    const [dragging,setDragging]=useState(null);
+    const dragRef=useRef(null);
+    const moveRef=useRef(null);
+    const upRef=useRef(null);
+
     useEffect(()=>{if(cardRef.current)setCardH(cardRef.current.offsetHeight);},[]);
-    const n=data.cards.length;
-    const PEEK=50, GAP=12, INFO_H=64;
-    const stackH=cardH+(n-1)*PEEK;
-    const expandH=n*(cardH+INFO_H+GAP)-GAP;
-    const cH=n>0?(expanded?expandH:stackH):0;
+    useEffect(()=>{
+      setOrder(prev=>{
+        const kept=prev.filter(id=>data.cards.some(c=>c.id===id));
+        const added=data.cards.filter(c=>!prev.includes(c.id)).map(c=>c.id);
+        return[...kept,...added];
+      });
+    },[data.cards.length]);
+
+    const orderedCards=order.map(id=>data.cards.find(c=>c.id===id)).filter(Boolean);
+    const n=orderedCards.length;
+    const PEEK=52,GAP=12,INFO_H=64;
+    const cH=n>0?(expanded?n*(cardH+INFO_H+GAP)-GAP:cardH+(n-1)*PEEK):0;
+    const getY=e=>e.touches?e.touches[0].clientY:e.clientY;
+
+    const onDown=(e,i)=>{
+      if(expanded)return;
+      e.stopPropagation();
+      dragRef.current={idx:i,startY:getY(e),currentY:getY(e),moved:false};
+      setDragging({idx:i,dy:0});
+    };
+
+    moveRef.current=(e)=>{
+      if(!dragRef.current)return;
+      const y=getY(e);
+      const raw=y-dragRef.current.startY;
+      dragRef.current.currentY=y;
+      dragRef.current.moved=Math.abs(raw)>8;
+      // collapsed: allow up (bring to front) + slight down (expand hint)
+      // expanded: allow slight up (collapse hint)
+      const dy=expanded
+        ?Math.min(0,raw)*0.4
+        :raw>0?Math.min(raw*0.25,24):Math.max(raw*0.6,-cardH);
+      setDragging({idx:dragRef.current.idx,dy});
+    };
+
+    upRef.current=()=>{
+      if(!dragRef.current)return;
+      const{idx,startY,currentY,moved}=dragRef.current;
+      dragRef.current=null;
+      const dy=(currentY||startY)-startY;
+      setDragging(null);
+      if(!moved){
+        if(!expanded){const card=orderedCards[idx];if(card){setSelCard(card.id);setScreen("cardDetail");}}
+      } else if(!expanded&&dy>60){
+        setExpanded(true);                              // drag down → expand
+      } else if(!expanded&&dy<-80){
+        setOrder(prev=>{const ids=[...prev];const[id]=ids.splice(idx,1);ids.push(id);return ids;}); // drag up → bring to FRONT (bottom of fan)
+      }
+    };
+
+    useEffect(()=>{
+      const mv=e=>moveRef.current(e);
+      const up=()=>upRef.current();
+      window.addEventListener('mousemove',mv);
+      window.addEventListener('mouseup',up);
+      window.addEventListener('touchmove',mv,{passive:false});
+      window.addEventListener('touchend',up);
+      return()=>{
+        window.removeEventListener('mousemove',mv);
+        window.removeEventListener('mouseup',up);
+        window.removeEventListener('touchmove',mv);
+        window.removeEventListener('touchend',up);
+      };
+    },[]);
+
     return(
       <div>
         <div className="page-top">
@@ -422,12 +688,12 @@ export default function CardTrack() {
             <div style={{fontSize:26,fontWeight:700,letterSpacing:"-.5px"}}>My Cards</div>
             <div style={{fontSize:13,color:T.muted,marginTop:2}}>{n} card{n!==1?"s":""}</div>
           </div>
-          {n>1&&(
-            <button onClick={()=>setExpanded(e=>!e)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:20,padding:"6px 16px",fontSize:13,fontWeight:500,color:T.muted,cursor:"pointer",fontFamily:T.font,transition:"all .2s"}}>
-              {expanded?"Stack":"Expand"}
+          {expanded&&(
+            <button onClick={()=>setExpanded(false)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:20,padding:"6px 16px",fontSize:13,fontWeight:500,color:T.accent,cursor:"pointer",fontFamily:T.font}}>
+              Stack back
             </button>
           )}
-        </div>
+</div>
         <div style={{padding:"0 14px"}}>
           {n===0&&(
             <div style={{...S.card,textAlign:"center",padding:"64px 24px",marginTop:16}}>
@@ -440,39 +706,40 @@ export default function CardTrack() {
           )}
           {n>0&&(
             <>
-              <div
-                style={{position:"relative",height:cH,transition:"height 0.5s cubic-bezier(0.34,1.2,0.64,1)",marginBottom:20,cursor:expanded?"default":"pointer"}}
-                onClick={!expanded?()=>setExpanded(true):undefined}
-              >
-                {data.cards.map((card,i)=>{
-                  const spent=cardSpent(card.id),p=pct(spent,card.limit);
-                  const y=expanded?i*(cardH+INFO_H+GAP):i*PEEK;
-                  const scale=expanded?1:Math.max(0.88,1-i*0.035);
+              <div style={{position:"relative",height:cH,transition:"height 0.5s cubic-bezier(0.34,1.2,0.64,1)",marginBottom:20}}>
+                {orderedCards.map((card,i)=>{
+                  const spent=cardSpent(card.id);
+                  const isDrag=dragging&&dragging.idx===i;
+                  // fan downward: card[0]=top/back, card[n-1]=bottom/front (highest z)
+                  const y=expanded?i*(cardH+INFO_H+GAP):i*PEEK+(isDrag?dragging.dy:0);
+                  const zi=expanded?n-i:i+1;
                   return(
                     <div
                       key={card.id}
                       ref={i===0?cardRef:null}
-                      style={{position:"absolute",left:0,right:0,top:0,transform:`translateY(${y}px) scale(${scale})`,transformOrigin:"top center",zIndex:n-i,transition:"transform 0.5s cubic-bezier(0.34,1.2,0.64,1)",cursor:"pointer",willChange:"transform"}}
-                      onClick={e=>{e.stopPropagation();if(!expanded){setExpanded(true);}else{setSelCard(card.id);setScreen("cardDetail");}}}
+                      style={{position:"absolute",left:0,right:0,top:0,transform:`translateY(${y}px)`,transformOrigin:"top center",zIndex:zi,transition:isDrag?"none":"transform 0.4s cubic-bezier(0.34,1.2,0.64,1)",cursor:expanded?"pointer":"grab",willChange:"transform",touchAction:"none"}}
+                      onMouseDown={e=>onDown(e,i)}
+                      onTouchStart={e=>onDown(e,i)}
+                      onClick={expanded?()=>{setSelCard(card.id);setScreen("cardDetail");}:undefined}
                     >
                       <CreditCardVisual card={card}/>
-                      <div style={{opacity:expanded?1:0,transform:expanded?"translateY(0)":"translateY(-6px)",transition:"opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s",padding:"10px 4px 0",pointerEvents:expanded?"auto":"none"}}>
+                      <div style={{opacity:expanded?1:0,transform:expanded?"translateY(0)":"translateY(-6px)",transition:"opacity 0.3s ease 0.1s,transform 0.3s ease 0.1s",padding:"10px 4px 0",pointerEvents:expanded?"auto":"none"}}>
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                           <div>
                             <div style={{fontSize:14,fontWeight:600}}>{fmt(spent)} <span style={{color:T.muted,fontWeight:400}}>spent</span></div>
-                            <div style={{fontSize:12,color:T.muted,marginTop:2}}>{fmt(card.limit-spent)} remaining · {p}%</div>
+                            <div style={{fontSize:12,color:T.muted,marginTop:2}}>{fmt(Math.max(0,Math.round(card.limit*.28)-spent))} left · {pct(spent,card.limit)}%</div>
                           </div>
                           <svg width="8" height="14" viewBox="0 0 8 14" fill="none"><path d="M1 1l6 6-6 6" stroke={T.muted} strokeWidth="1.8" strokeLinecap="round"/></svg>
                         </div>
                         <div style={{height:4,background:T.surface,borderRadius:3,marginTop:8,overflow:"hidden"}}>
-                          <div style={{width:`${Math.min(p,100)}%`,height:"100%",background:barColor(p),borderRadius:3}}/>
+                          <div style={{width:`${recPct(spent,card.limit)}%`,height:"100%",background:recBarColor(spent,card.limit),borderRadius:3}}/>
                         </div>
                       </div>
                     </div>
                   );
                 })}
               </div>
-              {!expanded&&n>1&&<p style={{textAlign:"center",fontSize:12,color:T.hint,marginTop:-10,marginBottom:16}}>Tap stack to expand</p>}
+              {!expanded&&n>1&&<p style={{textAlign:"center",fontSize:12,color:T.hint,marginTop:-10,marginBottom:16}}>↑ Drag card up to bring to front · ↓ Drag down to expand</p>}
               <button onClick={()=>setScreen("addCard")} style={{width:"100%",padding:"14px",borderRadius:T.r,border:`2px dashed rgba(0,0,0,0.15)`,background:"transparent",color:T.muted,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:T.font,display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:10}}>
                 <IconPlus color={T.muted} size={14}/> Add your next card
               </button>
@@ -491,13 +758,14 @@ export default function CardTrack() {
     const [limit,setLimit]=useState(ex?.limit?.toString()||"");
     const [color,setColor]=useState(ex?.color||CARD_COLORS[data.cards.length%CARD_COLORS.length]);
     const [day,setDay]=useState(ex?.billingDay?.toString()||"1");
+    const [payDay,setPayDay]=useState(ex?.paymentDueDay?.toString()||"");
     const preset=getCardPreset(name);
 
     const onName=(e)=>{const n=e.target.value;setName(n);const p=getCardPreset(n);if(p&&!editId)setColor(p.bg1);};
     const save=()=>{
       if(!name.trim()||!limit)return;
-      if(editId){updateCard(editId,{name:name.trim(),limit:Number(limit),color,billingDay:Number(day)});setScreen("cardDetail");}
-      else{addCard({name:name.trim(),limit:Number(limit),color,billingDay:Number(day)});setScreen("home");}
+      if(editId){updateCard(editId,{name:name.trim(),limit:Number(limit),color,billingDay:Number(day),paymentDueDay:Number(payDay)||null});setScreen("cardDetail");}
+      else{const id=addCard({name:name.trim(),limit:Number(limit),color,billingDay:Number(day),paymentDueDay:Number(payDay)||null});setSelCard(id);setScreen("cardPurpose");}
     };
 
     return(
@@ -533,6 +801,11 @@ export default function CardTrack() {
             <label style={S.label}>Billing cycle day</label>
             <input style={S.input} type="number" min="1" max="31" value={day} onChange={e=>setDay(e.target.value)} placeholder="1" inputMode="numeric"/>
           </div>
+          <div style={S.card}>
+            <label style={S.label}>Payment due day (each month)</label>
+            <input style={S.input} type="number" min="1" max="31" value={payDay} onChange={e=>setPayDay(e.target.value)} placeholder="e.g. 25" inputMode="numeric"/>
+            <div style={{fontSize:11,color:T.hint,marginTop:6}}>We'll remind you 10 days before to pay and boost your credit score.</div>
+          </div>
           {!preset&&(
             <div style={S.card}>
               <label style={S.label}>Card color</label>
@@ -553,6 +826,45 @@ export default function CardTrack() {
     );
   };
 
+  /* ── CARD PURPOSE ── */
+  const CardPurpose=()=>{
+    const card=data.cards.find(c=>c.id===selCard);
+    if(!card){setScreen("home");return null;}
+    const purposes=[
+      {label:"Gas",        emoji:"⛽", cat:"Gas"},
+      {label:"Dining",     emoji:"🍽️",  cat:"Dining"},
+      {label:"Groceries",  emoji:"🛒", cat:"Groceries"},
+      {label:"Travel",     emoji:"✈️",  cat:"Travel"},
+      {label:"Shopping",   emoji:"🛍️",  cat:"Shopping"},
+      {label:"Bills",      emoji:"💡", cat:"Bills"},
+      {label:"Health",     emoji:"🏥", cat:"Health"},
+      {label:"Misc / All", emoji:"🎯", cat:"Other"},
+    ];
+    const pick=(cat)=>{updateCard(selCard,{purpose:cat});setScreen("home");};
+    return(
+      <div style={{...S.app,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
+        <div style={{padding:"32px 20px 0"}}>
+          <div style={{marginBottom:6}}>
+            <div style={{width:48,height:48,borderRadius:14,background:`linear-gradient(135deg,${getCardPreset(card.name)?.bg1||card.color} 0%,${getCardPreset(card.name)?.bg2||card.color+"99"} 100%)`,marginBottom:18}}/>
+            <div style={{fontSize:22,fontWeight:700,letterSpacing:"-.3px"}}>What's this card mainly for?</div>
+            <div style={{fontSize:14,color:T.muted,marginTop:6,lineHeight:1.5}}>Pick one so we can help you track smarter.</div>
+          </div>
+        </div>
+        <div style={{padding:"24px 20px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,flex:1}}>
+          {purposes.map(p=>(
+            <button key={p.cat} onClick={()=>pick(p.cat)} style={{padding:"22px 16px",borderRadius:T.r,border:`1.5px solid ${T.border}`,background:T.card,cursor:"pointer",textAlign:"center",fontFamily:T.font,display:"flex",flexDirection:"column",alignItems:"center",gap:10,transition:"border .15s",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+              <span style={{fontSize:34,lineHeight:1}}>{p.emoji}</span>
+              <span style={{fontSize:14,fontWeight:600,color:T.text}}>{p.label}</span>
+            </button>
+          ))}
+        </div>
+        <div style={{padding:"0 20px 40px",textAlign:"center"}}>
+          <button onClick={()=>setScreen("home")} style={{background:"none",border:"none",color:T.hint,fontSize:13,cursor:"pointer",fontFamily:T.font,padding:"12px 24px"}}>Skip for now</button>
+        </div>
+      </div>
+    );
+  };
+
   /* ── ADD TRANSACTION ── */
   const AddTxn=({fromCardId=null}={})=>{
     const [amount,setAmount]=useState("");
@@ -564,7 +876,12 @@ export default function CardTrack() {
     const cur=sc?cardSpent(sc.id):0, newT=cur+(Number(amount)||0), newP=sc?pct(newT,sc.limit):0;
     const back=fromCardId?"cardDetail":"home";
 
-    const save=()=>{if(!amount||!cardId)return;addTxn({amount:Number(amount),cardId,category:cat,description:desc.trim()||cat,date});setScreen(back);};
+    const overLimit=sc&&newT>sc.limit;
+    const save=()=>{
+      if(!amount||!cardId||overLimit)return;
+      addTxn({amount:Number(amount),cardId,category:cat,description:desc.trim()||cat,date});
+      setScreen(back);
+    };
 
     if(!data.cards.length)return(
       <div>
@@ -624,23 +941,39 @@ export default function CardTrack() {
           {/* Description + Date */}
           <div style={S.card}>
             <div style={{display:"flex",gap:10}}>
-              <div style={{flex:1}}><label style={S.label}>Description</label><input style={S.input} value={desc} onChange={e=>setDesc(e.target.value)} placeholder="e.g. Whole Foods"/></div>
-              <div style={{width:130}}><label style={S.label}>Date</label><input style={S.input} type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
+              <div style={{flex:1,minWidth:0}}><label style={S.label}>Description</label><input style={S.input} value={desc} onChange={e=>setDesc(e.target.value)} placeholder="e.g. Whole Foods"/></div>
+              <div style={{width:120,flexShrink:0}}><label style={S.label}>Date</label><input style={{...S.input,padding:"13px 8px",fontSize:13}} type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
             </div>
           </div>
 
           {/* Warning */}
           {sc&&amount&&(
-            <div style={{background:newP>=90?"#fde8e8":newP>=75?"#fdf4e0":"#e8f0f8",borderRadius:T.rs,padding:"12px 14px",marginBottom:12,display:"flex",alignItems:"flex-start",gap:8,border:`1px solid ${newP>=90?"#f0a0a0":newP>=75?"#f0c860":"#a0c8e8"}`}}>
-              <div style={{marginTop:1}}><IconAlert color={newP>=90?"#a82020":newP>=75?"#8a5500":"#1a5090"}/></div>
-              <div>
-                <div style={{fontSize:13,fontWeight:600,color:newP>=90?"#7a1a1a":newP>=75?"#5a3800":"#0a3060"}}>{sc.name} will be at {newP}%</div>
-                <div style={{fontSize:12,color:newP>=90?"#a82020":newP>=75?"#8a5500":"#3060a0",marginTop:2}}>{fmtFull(newT)} of {fmt(sc.limit)} — {fmt(Math.max(0,sc.limit-newT))} left</div>
+            overLimit?(
+              <div style={{background:"#fde8e8",borderRadius:T.rs,padding:"12px 14px",marginBottom:12,border:"1px solid #f0a0a0"}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#7a1a1a",marginBottom:4}}>🚫 Exceeds credit limit — transaction blocked</div>
+                <div style={{fontSize:12,color:"#a82020"}}>
+                  {sc.name} limit is {fmt(sc.limit)}. Available: {fmt(Math.max(0,sc.limit-cardSpent(sc.id)))}. This transaction of {fmt(Number(amount))} is {fmt(newT-sc.limit)} over your limit.
+                </div>
               </div>
-            </div>
+            ):(
+              <div style={{background:newP>=90?"#fde8e8":newP>=75?"#fdf4e0":newP>=28?"#fffbea":"#e8f5ee",borderRadius:T.rs,padding:"12px 14px",marginBottom:12,display:"flex",alignItems:"flex-start",gap:8,border:`1px solid ${newP>=90?"#f0a0a0":newP>=75?"#f0c860":newP>=28?"#f0cc50":"#68d0a0"}`}}>
+                <div style={{marginTop:1}}><IconAlert color={newP>=90?"#a82020":newP>=75?"#8a5500":newP>=28?"#8a6000":"#18845a"}/></div>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,color:newP>=90?"#7a1a1a":newP>=75?"#5a3800":newP>=28?"#7a4a00":"#0a5030"}}>
+                    {newP>=28&&newP<75?"🛑 Stop here! ":newP>=75?"":"✓ "}
+                    {sc.name} will be at {newP}%
+                  </div>
+                  <div style={{fontSize:12,color:newP>=90?"#a82020":newP>=75?"#8a5500":newP>=28?"#8a5800":"#18845a",marginTop:2}}>
+                    {newP>=28&&newP<75?"You've hit the 28% ideal limit — putting this card away now protects your credit score.":newP<28?`Under ideal limit · recommended max ${fmt(Math.round(sc.limit*.28))}`:`${fmtFull(newT)} of ${fmt(sc.limit)} — ${fmt(Math.max(0,sc.limit-newT))} left`}
+                  </div>
+                </div>
+              </div>
+            )
           )}
 
-          <button onClick={save} disabled={!amount||!cardId} style={{...S.btn,background:amount&&cardId?T.accent:"#ccc",color:"#fff",borderRadius:T.rs,fontSize:16}}>Save Transaction</button>
+          <button onClick={save} disabled={!amount||!cardId||overLimit} style={{...S.btn,background:!amount||!cardId||overLimit?"#ccc":T.accent,color:"#fff",borderRadius:T.rs,fontSize:16}}>
+            {overLimit?"Transaction Blocked — Over Limit":"Save Transaction"}
+          </button>
         </div>
         <div className="bottom-spacer"/>
       </div>
@@ -669,16 +1002,20 @@ export default function CardTrack() {
           </div>
           <div style={{padding:"0 18px 24px"}}>
             <CreditCardVisual card={card}/>
+            {card.purpose&&<div style={{textAlign:"center",marginTop:10}}><span style={{display:"inline-block",background:"rgba(255,255,255,.18)",color:"rgba(255,255,255,.85)",borderRadius:12,padding:"3px 12px",fontSize:11,fontWeight:600,letterSpacing:".5px"}}>{card.purpose.toUpperCase()}</span></div>}
             <div style={{display:"flex",alignItems:"baseline",justifyContent:"center",gap:6,marginTop:20}}>
               <span style={{fontSize:36,fontWeight:700,color:"#fff",fontFamily:T.mono,letterSpacing:"-1.5px"}}>{fmt(spent)}</span>
-              <span style={{fontSize:15,color:"rgba(255,255,255,.4)"}}>/ {fmt(card.limit)}</span>
+              <span style={{fontSize:15,color:"rgba(255,255,255,.4)"}}>/ {fmt(Math.round(card.limit*.28))} <span style={{fontSize:11,opacity:.6}}>limit</span></span>
             </div>
             <div style={{height:5,background:"rgba(255,255,255,.15)",borderRadius:3,marginTop:14,overflow:"hidden"}}>
-              <div style={{width:`${Math.min(p,100)}%`,height:"100%",background:"#fff",borderRadius:3,transition:"width .4s"}}/>
+              <div style={{width:`${recPct(spent,card.limit)}%`,height:"100%",background:spent>card.limit*.28?"#dc3545":"#c9a96e",borderRadius:3,transition:"width .4s"}}/>
             </div>
             <div style={{display:"flex",justifyContent:"space-between",marginTop:8}}>
-              <span style={{fontSize:12,color:"rgba(255,255,255,.45)"}}>{p}% used</span>
-              <span style={{fontSize:12,color:"rgba(255,255,255,.45)"}}>{fmt(rem)} left · Day {card.billingDay||1}</span>
+              <span style={{fontSize:12,color:spent>card.limit*.28?"#fca5a5":"rgba(255,255,255,.45)"}}>
+                {spent>card.limit*.28?"Over ideal limit":""}
+                {spent<=card.limit*.28&&`${fmt(spent)} of ${fmt(Math.round(card.limit*.28))} target`}
+              </span>
+              <span style={{fontSize:12,color:"rgba(255,255,255,.45)"}}>{fmt(Math.max(0,Math.round(card.limit*.28)-spent))} left · Day {card.billingDay||1}</span>
             </div>
             <button onClick={()=>setScreen("addTxnCard")} style={{width:"100%",marginTop:18,padding:"14px",borderRadius:14,background:"rgba(255,255,255,.16)",border:"1px solid rgba(255,255,255,.28)",color:"#fff",fontSize:16,fontWeight:600,cursor:"pointer",fontFamily:T.font,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
               <IconPlus color="#fff" size={18}/> Add Transaction
@@ -707,21 +1044,20 @@ export default function CardTrack() {
             <div style={{fontSize:12,color:T.muted,fontWeight:600,letterSpacing:".5px",marginBottom:6}}>TRANSACTIONS</div>
             {!txns.length&&<div style={{padding:"28px 0",textAlign:"center",fontSize:13,color:T.muted}}>No transactions yet</div>}
             {txns.map((t,i)=>{const cc=catColors[t.category]||catColors.Other;return(
-              <div key={t.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",borderTop:i>0?`1px solid ${T.border}`:"none"}}>
-                <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{width:36,height:36,borderRadius:10,background:cc.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>{(catIcons[t.category]||catIcons.Other)(cc.fg)}</div>
-                  <div>
-                    <div style={{fontSize:14,fontWeight:500}}>{t.description}</div>
-                    <div style={{fontSize:12,color:T.muted,marginTop:1}}>{t.category} · {dateStr(t.date)}</div>
+              <SwipeRow key={t.id} onDelete={()=>deleteTxn(t.id)} bg={T.card} style={{borderTop:i>0?`1px solid ${T.border}`:"none"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{width:36,height:36,borderRadius:10,background:cc.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>{(catIcons[t.category]||catIcons.Other)(cc.fg)}</div>
+                    <div>
+                      <div style={{fontSize:14,fontWeight:500}}>{t.description}</div>
+                      <div style={{fontSize:12,color:T.muted,marginTop:1}}>{t.category} · {dateStr(t.date)}</div>
+                    </div>
                   </div>
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:6}}>
                   <div style={{textAlign:"right"}}>
                     <div style={{fontSize:15,fontWeight:600,fontFamily:T.mono}}>-{fmtFull(t.amount)}</div>
                   </div>
-                  <button onClick={e=>{e.stopPropagation();deleteTxn(t.id);}} style={{background:"none",border:"none",cursor:"pointer",color:T.hint,padding:6,borderRadius:8}}><IconTrash/></button>
                 </div>
-              </div>
+              </SwipeRow>
             );})}
           </div>
         </div>
@@ -755,6 +1091,71 @@ export default function CardTrack() {
             </div>
           ):(
             <>
+              {/* Monthly spending bar chart */}
+              {(()=>{
+                const months=Array.from({length:6},(_,i)=>{
+                  const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-5+i);
+                  const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+                  const label=d.toLocaleDateString('en-US',{month:'short'});
+                  const amt=txns.filter(t=>t.date.startsWith(key)).reduce((s,t)=>s+Number(t.amount),0);
+                  return{key,label,amt};
+                });
+                const maxAmt=Math.max(...months.map(m=>m.amt),1);
+                const H=90,BW=32,GAP=10,PAD=10;
+                const TW=months.length*(BW+GAP)-GAP+PAD*2;
+                return(
+                  <div style={{...S.card,marginBottom:12}}>
+                    <div style={{fontSize:12,color:T.muted,fontWeight:600,letterSpacing:".5px",marginBottom:14}}>MONTHLY SPENDING</div>
+                    <svg viewBox={`0 0 ${TW} ${H+28}`} style={{width:"100%",overflow:"visible"}}>
+                      {months.map((m,i)=>{
+                        const barH=Math.max(2,(m.amt/maxAmt)*H);
+                        const x=PAD+i*(BW+GAP), y=H-barH;
+                        const isCur=i===5;
+                        return(
+                          <g key={m.key}>
+                            <rect x={x} y={y} width={BW} height={barH} rx={5} fill={isCur?T.accent:m.amt===0?"#e8e6e0":"#b0bcd0"}/>
+                            <text x={x+BW/2} y={H+14} textAnchor="middle" fontSize={9} fill={T.muted}>{m.label}</text>
+                            {m.amt>0&&<text x={x+BW/2} y={Math.max(y-4,6)} textAnchor="middle" fontSize={8} fill={isCur?"#fff":T.muted}>{fmt(m.amt)}</text>}
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
+                );
+              })()}
+
+              {/* Card utilization chart */}
+              {data.cards.length>0&&(
+                <div style={{...S.card,marginBottom:12}}>
+                  <div style={{fontSize:12,color:T.muted,fontWeight:600,letterSpacing:".5px",marginBottom:14}}>CARD UTILIZATION</div>
+                  {data.cards.map(card=>{
+                    const spent=cardSpent(card.id),p=pct(spent,card.limit),rp=recPct(spent,card.limit);
+                    const color=recBarColor(spent,card.limit);
+                    return(
+                      <div key={card.id} style={{marginBottom:14}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+                          <span style={{fontSize:13,fontWeight:500}}>{card.name.length>22?card.name.slice(0,22)+"…":card.name}</span>
+                          <span style={{fontSize:12,color,fontWeight:600,fontFamily:T.mono}}>{p}%</span>
+                        </div>
+                        <div style={{position:"relative",height:10,background:T.surface,borderRadius:5}}>
+                          <div style={{width:`${Math.min(p,100)}%`,height:"100%",background:color,borderRadius:5,transition:"width .4s"}}/>
+                          <div style={{position:"absolute",left:"10%",top:-2,bottom:-2,width:1.5,background:"rgba(24,132,90,.4)",borderRadius:1}}/>
+                          <div style={{position:"absolute",left:"28%",top:-2,bottom:-2,width:1.5,background:"rgba(26,58,92,.35)",borderRadius:1}}/>
+                        </div>
+                        <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
+                          <span style={{fontSize:10,color:T.hint}}>{fmt(spent)} spent</span>
+                          <span style={{fontSize:10,color:T.hint}}>target {fmt(Math.round(card.limit*.28))}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div style={{display:"flex",gap:14,marginTop:4}}>
+                    <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:10,height:2,background:"rgba(24,132,90,.5)",borderRadius:1}}/><span style={{fontSize:10,color:T.hint}}>10% mark</span></div>
+                    <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:10,height:2,background:"rgba(26,58,92,.4)",borderRadius:1}}/><span style={{fontSize:10,color:T.hint}}>28% target</span></div>
+                  </div>
+                </div>
+              )}
+
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
                 {[{l:"Total spent",v:fmt(total)},{l:"Daily avg",v:fmt(avg)},{l:"Transactions",v:count},{l:"Largest",v:largest?fmt(largest.amount):"$0",sub:largest?.description}].map((m,i)=>(
                   <div key={i} style={{background:T.surface,borderRadius:T.rs,padding:16}}>
@@ -809,13 +1210,15 @@ export default function CardTrack() {
   const navScreens=["home","cardsScreen","stats","addTxn"];
 
   return (
-    <div style={S.app}>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <div style={{...S.app,position:"relative"}}>
+      <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+      <MandalaBackground color={T.accent}/>
 
       {screen==="home"        && <Home/>}
       {screen==="cardsScreen" && <CardsScreen/>}
       {screen==="addCard"     && <CardForm/>}
       {screen==="editCard"    && <CardForm editId={selCard}/>}
+      {screen==="cardPurpose" && <CardPurpose/>}
       {screen==="addTxn"      && <AddTxn/>}
       {screen==="addTxnCard"  && <AddTxn fromCardId={selCard}/>}
       {screen==="cardDetail"  && <CardDetail/>}
@@ -842,6 +1245,7 @@ export default function CardTrack() {
       )}
 
       {toast&&<div style={S.toast}>{toast}</div>}
+      <Over30Modal/>
     </div>
   );
 }
